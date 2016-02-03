@@ -1,0 +1,181 @@
+from django.shortcuts import render
+import requests, json, re
+from django.http import HttpRequest, HttpResponse
+# Create your views here.
+from ConnectAlmMainApp.models import *
+from django.db.models import Q
+
+def artifact_list(sig):
+    "List of all artifact IDs for a user"
+
+    artifactsList = []
+    users = User.objects.get(signum = sig)
+
+    if (len(users) != 0):
+        for user in users:
+            userID= user.id
+            atrifacts = Artifact.objects.get(pk= userID)
+            for artifact in atrifacts:
+                artifactsList.append(artifact.artifact_id)
+
+        return artifactsList
+    else:
+         add_user(sig)
+
+def get_user(sig):
+    if User.objects.filter(signum=sig):
+        return "User exists"
+    else:
+        return "User does not exist"
+
+
+
+def add_user(sig, userName):
+
+    newUser = User(Name = userName, signum=sig)
+    newUser.save()
+
+def insert_artifcat(artifactID, userSignum):
+
+    Artifact.artifact_id = artifactID
+    users = User.objects.get(signum = userSignum)
+    for user in users:
+       userID= user.id
+    Artifact.user_id= userID
+
+def update_artifact(artifactID, newStatus):
+     artifacts = Artifact.objects.get(artifact_id = artifactID)
+     for artifact in artifacts:
+         artifact(status = newStatus)
+         artifact.save()
+
+#This function takes a user name and password then produces a token from openAlm
+def get_security_token(openAlmUser, openAlmPassword):
+
+    status = True
+    msg = None
+    openAlmTokenUrl = "https://openalm.lmera.ericsson.se/api/v1/tokens"
+    data = json.dumps({"username": openAlmUser, "password": openAlmPassword})
+    r = requests.post(openAlmTokenUrl, data, auth=(openAlmUser, openAlmPassword))
+
+    userId = 0
+    token = ""
+    strippedResponse = r.text.strip()
+
+    for line in strippedResponse.splitlines():
+        match = re.search('user_id', line)
+        if match:
+            uncleanId = line.split(':')[1].strip()
+            userId = re.sub("[^0-9]", "", uncleanId)
+
+        match = re.search('"token"', line)
+        if match:
+            uncleanToken = line.split(':')[1].strip()
+            securityToken = re.sub("[^0-9a-zA-Z]", "", uncleanToken)
+
+    if not securityToken:
+        msg = "\nCould not obtain security token."
+        status = False
+    else:
+        status=True
+
+    return (status, msg, securityToken, userId)
+
+#This function takes the artifact Id and returns the id, description and status of this particular one
+def openAlmArtifact(artifactid) :
+    status, msg, securityToken, userId = get_security_token("ecsdpdev", "t4eTecrazeNAwru4")
+    url = "https://openalm.lmera.ericsson.se/api/v1/artifacts/"+artifactid
+    openAlmRequest = {"X-Auth-UserId":userId, "X-Auth-Token":securityToken}
+    request = requests.get(url, headers=openAlmRequest)
+
+    artifactId = 0
+    processId = False
+    value = "No Value"
+    processValue = False
+    status = "No Status"
+    processStatus = False
+
+    strippedResponse = request.text.strip()
+
+    for line in strippedResponse.splitlines():
+        match = re.search('"id"', line)
+        if match and processId==False:
+            uncleanId = line.split(':')[1].strip()
+            artifactId = re.sub("[^0-9]", "", uncleanId)
+            processId=True
+
+        match = re.search('"value"', line)
+        if match and processValue==False:
+            value = line.split(':')[1].strip()
+            processValue=True
+
+        match = re.search('105348', line)
+        if match and processStatus==False:
+            status = "Not Started"
+            processStatus=True
+
+        match = re.search('105349', line)
+        if match and processStatus==False:
+            status = "In Progress"
+            processStatus=True
+
+        match = re.search('105350', line)
+        if match and processStatus==False:
+            status = "Done"
+            processStatus=True
+
+    return (artifactId, value, status)
+
+def connect(request, input):
+    result = get_user(input)
+    if(result == "User does not exist"):
+        add_user(input, "")
+        return HttpResponse(False)
+    else:
+        return HttpResponse(True)
+
+def follow(request, sig, id):
+<<<<<<< HEAD
+    artifactId, value, status = openAlmArtifact(id)
+    insert_artifcat(artifactId,sig)
+    return HttpResponse()
+=======
+
+    return
+>>>>>>> poll done
+
+def poll(request, sig):
+    artifactList = []
+    resultDictionary = {}
+    if(get_user(sig)=="User exists"):
+        artifactList = artifact_list(sig)
+        for artifact in artifact_list():
+            artifactId, value, status = openAlmArtifact(artifact.id)
+            if(status!=artifact.status):
+                value = "The "+ artifact.value+" changed from "+artifact.status+" to "+status
+                resultDictionary[artifactId] = value
+                update_artifact(artifactId, status)
+        return HttpResponse(resultDictionary)
+    else:
+        return HttpResponse()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

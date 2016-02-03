@@ -1,0 +1,24 @@
+{
+	"manifest_version":2,
+	
+	"name": "ALM Connect",
+	"version": "1.0",
+	"description":"Get Updates from Open ALM",
+	"background": {
+        "scripts": [
+            "test_connect.js"
+        ]
+    },
+	"content_security_policy": "script-src 'self' http://localhost; default-src 'self'; connect-src *; style-src 'self' data: chrome-extension-resource: 'unsafe-inline'; img-src 'self' data: chrome-extension-resource:; frame-src 'self' data: chrome-extension-resource:; font-src 'self' data: chrome-extension-resource:; media-src *;",
+	"browser_action": {
+    	"default_icon": "icon.png",
+    	"default_popup": "login.html",
+    	"default_title": "ALM Connect"
+  	},
+
+	"permissions": [
+		"unlimitedStorage",
+		"notifications",
+		"http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"
+	]
+}
